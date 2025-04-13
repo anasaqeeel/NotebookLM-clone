@@ -25,13 +25,23 @@ async function createPlayNote(
     const res = await fetch(url, {
       method: "POST",
       headers,
-      body: JSON.stringify({ text }),
+      body: JSON.stringify({
+        text,
+        // Add additional parameters for better podcast-style output
+        voice_type: "conversational",
+        style: "podcast",
+        speakers: [
+          { voice_id: "male_01", role: "host" },
+          { voice_id: "female_01", role: "co-host" },
+        ],
+      }),
     });
     if (res.ok) {
       const json = await res.json();
-      return { playNoteId: json.playNoteId }; // assuming playNoteId is returned
+      return { playNoteId: json.playNoteId };
     } else {
-      return { message: "Failed to create play note" };
+      const error = await res.json();
+      return { message: error.message || "Failed to create play note" };
     }
   } catch (error) {
     return { message: "Error creating play note: " + error };
@@ -42,13 +52,7 @@ async function getPlayNoteAudioUrl(
   playNoteId: string,
   apiKey: string,
   userId: string
-): Promise<{
-  audioUrl?: string;
-  transcript?: string;
-  status?: string;
-  message?: string;
-}> {
-  // Double encode the playNoteId for URL safety.
+): Promise<Data> {
   const encodedId = encodeURIComponent(playNoteId);
   const url = `https://api.play.ai/api/v1/playnotes/${encodedId}`;
   const headers = {
@@ -70,11 +74,16 @@ async function getPlayNoteAudioUrl(
       } else {
         return {
           status: json.status,
-          message: "Generation in progress. Please try again later.",
+          message:
+            json.message || "Generation in progress. Please try again later.",
         };
       }
     } else {
-      return { message: "Failed to retrieve play note", status: "error" };
+      const error = await res.json();
+      return {
+        message: error.message || "Failed to retrieve play note",
+        status: "error",
+      };
     }
   } catch (error) {
     return { message: "Error retrieving play note: " + error, status: "error" };
@@ -82,14 +91,13 @@ async function getPlayNoteAudioUrl(
 }
 
 export async function POST(request: Request) {
-  // Parse the incoming JSON body
   const body = await request.json();
-  const { text } = body;
+  const { text, researchContent } = body;
+
   if (!text) {
     return NextResponse.json({ message: "Text is required" }, { status: 400 });
   }
 
-  // Retrieve API credentials from environment variables.
   const apiKey = process.env.PLAYDIALOG_API_KEY;
   const userId = process.env.PLAYDIALOG_USER_ID;
   if (!apiKey || !userId) {
@@ -99,8 +107,12 @@ export async function POST(request: Request) {
     );
   }
 
-  // Step 1: Create a play note.
-  const createResult = await createPlayNote(text, apiKey, userId);
+  // Generate prompt for PlayNote based on research content
+  const prompt = researchContent
+    ? `Create a podcast discussion about: ${text}\n\nResearch highlights:\n${researchContent}\n\nSpeak naturally as two hosts would in a professional podcast.`
+    : `Create a podcast discussion about: ${text}\n\nSpeak naturally as two hosts would in a professional podcast.`;
+
+  const createResult = await createPlayNote(prompt, apiKey, userId);
   if (!createResult.playNoteId) {
     return NextResponse.json(
       {
@@ -110,22 +122,30 @@ export async function POST(request: Request) {
       { status: 500 }
     );
   }
-  const playNoteId = createResult.playNoteId;
 
-  // Step 2: Simulate a delay for generation (e.g., 5 seconds).
-  await new Promise((resolve) => setTimeout(resolve, 5000));
+  // Poll for completion (simplified version - in production you might want to use webhooks)
+  let result: Data = { status: "processing" };
+  let attempts = 0;
+  const maxAttempts = 10;
 
-  // Step 3: Retrieve the audio URL and transcript.
-  const result = await getPlayNoteAudioUrl(playNoteId, apiKey, userId);
+  while (attempts < maxAttempts && result.status !== "completed") {
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+    result = await getPlayNoteAudioUrl(createResult.playNoteId, apiKey, userId);
+    attempts++;
+  }
+
   if (result.status === "completed" && result.audioUrl) {
     return NextResponse.json({
       audioUrl: result.audioUrl,
       transcript: result.transcript,
     });
   } else {
-    return NextResponse.json({
-      status: result.status,
-      message: result.message,
-    });
+    return NextResponse.json(
+      {
+        status: result.status || "timeout",
+        message: result.message || "Audio generation timed out",
+      },
+      { status: 500 }
+    );
   }
 }
