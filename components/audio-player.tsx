@@ -12,57 +12,21 @@ export default function AudioPlayer({ audioUrl }: AudioPlayerProps) {
   const [isPlaying, setIsPlaying] = useState(false)
   const [currentTime, setCurrentTime] = useState(0)
   const [duration, setDuration] = useState(0)
-  const [isReady, setIsReady] = useState(false)
-
-  // Validate audio source
-  useEffect(() => {
-    if (audioRef.current) {
-      const audio = audioRef.current
-
-      const onLoadedMetadata = () => {
-        setDuration(audio.duration)
-        setIsReady(true)
-      }
-
-      const onTimeUpdate = () => {
-        setCurrentTime(audio.currentTime)
-      }
-
-      const onEnded = () => {
-        setIsPlaying(false)
-        setCurrentTime(0)
-      }
-
-      audio.addEventListener("loadedmetadata", onLoadedMetadata)
-      audio.addEventListener("timeupdate", onTimeUpdate)
-      audio.addEventListener("ended", onEnded)
-
-      return () => {
-        audio.removeEventListener("loadedmetadata", onLoadedMetadata)
-        audio.removeEventListener("timeupdate", onTimeUpdate)
-        audio.removeEventListener("ended", onEnded)
-      }
-    }
-  }, [audioUrl])
 
   const handlePlayPause = () => {
-    if (!audioRef.current || !isReady) return
+    if (!audioRef.current) return
     if (isPlaying) {
       audioRef.current.pause()
+      setIsPlaying(false)
     } else {
-      audioRef.current.play().catch((err) => {
-        console.error("Playback error:", err)
-        setIsPlaying(false)
-      })
+      audioRef.current
+        .play()
+        .then(() => setIsPlaying(true))
+        .catch((err) => {
+          console.error("Playback error:", err)
+          setIsPlaying(false)
+        })
     }
-    setIsPlaying(!isPlaying)
-  }
-
-  const handleSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!audioRef.current) return
-    const time = parseFloat(e.target.value)
-    audioRef.current.currentTime = time
-    setCurrentTime(time)
   }
 
   const skipTime = (offset: number) => {
@@ -73,14 +37,47 @@ export default function AudioPlayer({ audioUrl }: AudioPlayerProps) {
     setCurrentTime(newTime)
   }
 
-  const formatTime = (t: number) => {
-    const min = Math.floor(t / 60)
-    const sec = Math.floor(t % 60)
+  const handleSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!audioRef.current) return
+    const time = parseFloat(e.target.value)
+    audioRef.current.currentTime = time
+    setCurrentTime(time)
+  }
+
+  const formatTime = (time: number) => {
+    const min = Math.floor(time / 60)
+    const sec = Math.floor(time % 60)
     return `${min.toString().padStart(2, "0")}:${sec.toString().padStart(2, "0")}`
   }
 
+  useEffect(() => {
+    if (!audioRef.current) return
+
+    const audio = audioRef.current
+    const onLoadedMetadata = () => {
+      setDuration(audio.duration)
+    }
+    const onTimeUpdate = () => {
+      setCurrentTime(audio.currentTime)
+    }
+    const onEnded = () => {
+      setIsPlaying(false)
+      setCurrentTime(0)
+    }
+
+    audio.addEventListener("loadedmetadata", onLoadedMetadata)
+    audio.addEventListener("timeupdate", onTimeUpdate)
+    audio.addEventListener("ended", onEnded)
+
+    return () => {
+      audio.removeEventListener("loadedmetadata", onLoadedMetadata)
+      audio.removeEventListener("timeupdate", onTimeUpdate)
+      audio.removeEventListener("ended", onEnded)
+    }
+  }, [audioUrl])
+
   return (
-    <div className="w-full max-w-xl bg-purple-100 p-4 rounded-xl shadow-md">
+    <div className="bg-purple-50 rounded-lg p-4 shadow-md">
       <audio ref={audioRef} src={audioUrl} preload="auto" />
       <div className="flex items-center gap-4 mb-2">
         <button onClick={() => skipTime(-10)} className="text-purple-700 hover:text-purple-900">
@@ -90,7 +87,7 @@ export default function AudioPlayer({ audioUrl }: AudioPlayerProps) {
           onClick={handlePlayPause}
           className="h-12 w-12 rounded-full bg-[#6a5acd] hover:bg-[#5849c0] text-white flex items-center justify-center"
         >
-          {isPlaying ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5" />}
+          {isPlaying ? <Pause size={24} /> : <Play size={24} />}
         </button>
         <button onClick={() => skipTime(10)} className="text-purple-700 hover:text-purple-900">
           <SkipForward size={24} />
@@ -103,9 +100,9 @@ export default function AudioPlayer({ audioUrl }: AudioPlayerProps) {
         type="range"
         min={0}
         max={duration}
+        step="0.1"
         value={currentTime}
         onChange={handleSeek}
-        step="0.1"
         className="w-full accent-[#6a5acd] cursor-pointer"
       />
     </div>

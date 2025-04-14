@@ -32,21 +32,17 @@ export default function NotebookInterface() {
         </button>
       </div>
       <div className="flex flex-col md:flex-row">
-        {activeTab === "research" && (
-          <div className="w-full md:w-2/3 border-r border-purple-200">
+        <div className="w-full md:w-2/3 border-r border-purple-200">
+          <div className={activeTab === "research" ? "block" : "hidden"}>
             <ChatPanel />
           </div>
-        )}
-        {activeTab === "sources" && (
-          <div className="w-full md:w-2/3 border-r border-purple-200">
+          <div className={activeTab === "sources" ? "block" : "hidden"}>
             <SourcesPanel />
           </div>
-        )}
-        {activeTab === "podcast" && (
-          <div className="w-full md:w-2/3 border-r border-purple-200">
+          <div className={activeTab === "podcast" ? "block" : "hidden"}>
             <PodcastGenerator />
           </div>
-        )}
+        </div>
         <div className="w-full md:w-1/3">
           <StudioPanel />
         </div>
