@@ -13,7 +13,7 @@ export default function ChatPanel() {
   const [messages, setMessages] = useState<Message[]>([
     {
       role: "assistant",
-      text: "Hello! Enter your research question below and I'll fetch a real GPT response.",
+      text: "Hello! Enter your research question below and I'll response!.",
     },
   ])
   const [inputValue, setInputValue] = useState("")

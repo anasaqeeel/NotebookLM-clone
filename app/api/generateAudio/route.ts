@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import axios from "axios";
 
-const ELEVEN_API_KEY = "sk_beb85cab7901da52008500bee11cca6868b7b64a484f597c";
+const ELEVEN_API_KEY = "sk_a7660cacd6af68d0c9bb17c544fc105a25a4a8ce44257af6";
 const VOICE_MALE = "JBFqnCBsd6RMkjVDRZzb"; // e.g., "21m00Tcm4TlvDq8ikWAM"
 const VOICE_FEMALE = "JBFqnCBsd6RMkjVDRZzb"; // e.g., "EXAVITQu4vr4xnSDxMaL"
 
