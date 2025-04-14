@@ -1,7 +1,9 @@
 "use client"
 
+import type React from "react"
+
 import { useEffect, useRef, useState } from "react"
-import { Play, Pause, ThumbsUp, ThumbsDown, MoreVertical } from 'lucide-react'
+import { Play, Pause, ThumbsUp, ThumbsDown, MoreVertical } from "lucide-react"
 
 interface AudioPlayerProps {
   audioUrl: string
@@ -17,6 +19,7 @@ export default function AudioPlayer({
   const [isPlaying, setIsPlaying] = useState(false)
   const [currentTime, setCurrentTime] = useState(0)
   const [duration, setDuration] = useState(0)
+  const [isDragging, setIsDragging] = useState(false)
 
   const formatTime = (time: number) => {
     const min = Math.floor(time / 60)
@@ -68,7 +71,9 @@ export default function AudioPlayer({
     const onPause = () => setIsPlaying(false)
     const onLoadedMetadata = () => setDuration(audio.duration)
     const onTimeUpdate = () => {
-      setCurrentTime(audio.currentTime)
+      if (!isDragging) {
+        setCurrentTime(audio.currentTime)
+      }
     }
     const onEnded = () => {
       setIsPlaying(false)
@@ -88,7 +93,7 @@ export default function AudioPlayer({
       audio.removeEventListener("timeupdate", onTimeUpdate)
       audio.removeEventListener("ended", onEnded)
     }
-  }, [audioUrl])
+  }, [audioUrl, isDragging])
 
   return (
     <div className="w-full">
