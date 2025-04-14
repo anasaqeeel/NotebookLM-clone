@@ -1,59 +1,44 @@
-// contexts/research-context.tsx
 "use client"
 
-import { createContext, useContext, useState } from "react";
+import { createContext, useContext, useState } from "react"
 
 interface ResearchContextType {
-  researchContent: string;
-  setResearchContent: (content: string) => void;
-  generateResearch: (topic: string) => Promise<void>;
-  isLoading: boolean;
+  researchContent: string
+  generateResearch: (query: string) => Promise<string>
+  setResearchContent: (content: string) => void
 }
 
-const ResearchContext = createContext<ResearchContextType>({
-  researchContent: "",
-  setResearchContent: () => {},
-  generateResearch: async () => {},
-  isLoading: false,
-});
+const ResearchContext = createContext<ResearchContextType | undefined>(undefined)
 
-export function ResearchProvider({ children }: { children: React.ReactNode }) {
-  const [researchContent, setResearchContent] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
+export const ResearchProvider = ({ children }: { children: React.ReactNode }) => {
+  const [researchContent, setResearchContent] = useState("")
 
-  const generateResearch = async (topic: string) => {
-    setIsLoading(true);
+  const generateResearch = async (query: string): Promise<string> => {
     try {
-      const response = await fetch("/api/generateResearch", {
+      const res = await fetch("/api/generateResearch", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ topic }),
-      });
-      const data = await response.json();
-      if (data.content) {
-        setResearchContent(data.content);
-      }
-    } catch (error) {
-      console.error("Error generating research:", error);
-    } finally {
-      setIsLoading(false);
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ topic: query }),
+      })
+      const data = await res.json()
+      const content = data.content || ""
+      setResearchContent(content)
+      return content
+    } catch (err) {
+      console.error("Failed to generate research", err)
+      return ""
     }
-  };
+  }
 
   return (
-    <ResearchContext.Provider
-      value={{
-        researchContent,
-        setResearchContent,
-        generateResearch,
-        isLoading,
-      }}
-    >
+    <ResearchContext.Provider value={{ researchContent, generateResearch, setResearchContent }}>
       {children}
     </ResearchContext.Provider>
-  );
+  )
 }
 
-export const useResearchContext = () => useContext(ResearchContext);
+export const useResearchContext = () => {
+  const context = useContext(ResearchContext)
+  if (!context) throw new Error("useResearchContext must be used within a ResearchProvider")
+  return context
+}
