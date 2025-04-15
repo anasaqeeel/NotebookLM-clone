@@ -10,7 +10,10 @@ interface AudioPlayerProps {
 
 const AudioPlayer = forwardRef<HTMLAudioElement, AudioPlayerProps>(({ audioUrl, onPause }, ref) => {
   const internalAudioRef = useRef<HTMLAudioElement | null>(null)
-  const combinedRef = (ref as React.MutableRefObject<HTMLAudioElement | null>) || internalAudioRef
+
+  // Check if ref is a function or a RefObject and assign accordingly
+  const combinedRef = ref && 'current' in ref ? ref : internalAudioRef
+
   const [isPlaying, setIsPlaying] = useState(false)
   const [currentTime, setCurrentTime] = useState(0)
   const [duration, setDuration] = useState(0)
@@ -52,9 +55,8 @@ const AudioPlayer = forwardRef<HTMLAudioElement, AudioPlayerProps>(({ audioUrl, 
     if (!audio) return
     if (isPlaying) {
       audio.pause()
-      // onPause will be triggered by event listener
     } else {
-      audio.play().then(() => setIsPlaying(true)).catch((err) => {
+      audio.play().then(() => setIsPlaying(true)).catch((err: any) => { // Added 'any' to err
         console.error("Playback error:", err)
         setIsPlaying(false)
       })
