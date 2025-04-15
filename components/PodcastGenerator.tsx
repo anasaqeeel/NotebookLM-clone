@@ -33,11 +33,8 @@ export default function PodcastGenerator() {
         setStatus("idle")
         return
       }
-
-      const generatedScript = data.script
-      setScript(generatedScript)
-      // Update the context for the studio panel to access
-      setResearchContent(generatedScript) 
+      setScript(data.script)
+      setResearchContent(data.script)
       setStatus("done")
     } catch (err: any) {
       setError(err.message || "Error generating script.")
@@ -105,7 +102,6 @@ export default function PodcastGenerator() {
       {script && (
         <div className="bg-white border border-purple-200 p-6 rounded-lg shadow-sm">
           <h3 className="font-bold text-lg mb-3 text-gray-800">Generated Podcast Script</h3>
-          <div className="bg-gray-50 p-4 rounded-md whitespace-pre-wrap font-mono text-sm text-gray-700">{script}</div>
           <p className="mt-4 text-sm text-gray-600">
             Go to the Audio Studio panel to generate and listen to this podcast.
           </p>

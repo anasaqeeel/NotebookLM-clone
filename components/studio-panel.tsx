@@ -70,75 +70,70 @@ export default function StudioPanel() {
 
   // Handle asking a question during the podcast
   const handleAskQuestion = async () => {
-    if (!question.trim()) return
-
-    // Clear previous errors and responses
-    setQuestionError("")
-    setQuestionResponse("")
-
-    // Pause the original podcast audio
+    if (!question.trim()) return;
+  
+    // Clear state
+    setQuestionError("");
+    setQuestionResponse("");
+    setIsAskingQuestion(true);
+  
     if (audioRef.current) {
-      audioRef.current.pause()
+      audioRef.current.pause();
     }
-
-    setIsAskingQuestion(true)
-
+  
     try {
-      // Generate a response using the API
+      // Step 1: Get response from API
       const res = await fetch("/api/answerQuestion", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          question: question,
-          context: finalScript,
-        }),
-      })
-
-      if (!res.ok) {
-        throw new Error("Failed to get response")
-      }
-
-      const data = await res.json()
-      const hostResponse = data.response
-      setQuestionResponse(hostResponse)
-
-      // Generate audio for the response
+        body: JSON.stringify({ question, context: finalScript }),
+      });
+  
+      if (!res.ok) throw new Error("Failed to get response");
+  
+      const data = await res.json();
+      const hostResponse = data.response; // this should include "Host A: ..." etc.
+  
+      setQuestionResponse(hostResponse);
+  
+      // Step 2: Append host response to original script
+      const extendedScript = `${finalScript}\n\n${hostResponse}`;
+  
+      // Step 3: Re-generate audio for full updated script
       const audioRes = await fetch("/api/generateAudio", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ script: hostResponse }),
-      })
-
-      if (audioRes.ok) {
-        const blob = await audioRes.blob()
-        const url = URL.createObjectURL(blob)
-
-        // Create a new audio element for the response
-        const responseAudio = new Audio(url)
-
-        // When response audio ends, resume the original podcast
-        responseAudio.onended = () => {
-          if (audioRef.current) {
-            audioRef.current.play().catch((err) => console.error("Error resuming podcast:", err))
-          }
+        body: JSON.stringify({ script: extendedScript }),
+      });
+  
+      if (!audioRes.ok) throw new Error("Failed to generate updated audio");
+  
+      const blob = await audioRes.blob();
+      const url = URL.createObjectURL(blob);
+  
+      // Step 4: Update audio state
+      setAudioUrl(url);
+      setShowPlayer(true);
+  
+      // Step 5: Play new audio
+      setTimeout(() => {
+        if (audioRef.current) {
+          audioRef.current.load(); // refresh audio
+          audioRef.current.play().catch((err) => console.error("Playback error:", err));
         }
-
-        // Play the response audio
-        responseAudio.play().catch((err) => console.error("Error playing response:", err))
-      }
+      }, 100);
     } catch (error) {
-      console.error("Error asking question:", error)
-      setQuestionError("Failed to get response to your question. Please try again.")
-
-      // Resume the original podcast if there was an error
+      console.error("Error handling question:", error);
+      setQuestionError("Something went wrong. Please try again.");
       if (audioRef.current) {
-        audioRef.current.play().catch((err) => console.error("Error resuming podcast:", err))
+        audioRef.current.play().catch((err) => console.error("Error resuming:", err));
       }
     } finally {
-      setIsAskingQuestion(false)
-      setQuestion("") // Clear the question input
+      setIsAskingQuestion(false);
+      setQuestion(""); // Clear input
     }
-  }
+  };
+  
 
   // Fallback function to generate host responses directly in the frontend
   // This is used if the API route isn't working

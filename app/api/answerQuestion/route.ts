@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
       "${question}"
       
       Please provide a brief, conversational response as both hosts answering this question.
-      Keep your response under 5 minutes when spoken.
+      Keep your response under 30 seconds when spoken (about 75 words).
       Format your response as:
       
       Host A: [response]
@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
     `;
 
     const completion = await openai.chat.completions.create({
-      model: "gpt-4o", // Using gpt-4o for better responses
+      model: "gpt-4",
       messages: [
         {
           role: "system",
