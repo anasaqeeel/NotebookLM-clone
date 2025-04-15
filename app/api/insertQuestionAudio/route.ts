@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
       },
       {
         headers: {
-          "xi-api-key": "sk_00b4648b86c05e8ca8ed4397c5764ce1b3e6a0c669c72f0e",
+          "xi-api-key": "sk_a999324ac760e40a5728bc0b2200ad46db2e27399e424ac5",
           "Content-Type": "application/json",
           Accept: "audio/mpeg",
         },
