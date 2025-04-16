@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
     `;
 
     const completion = await openai.chat.completions.create({
-      model: "gpt-3.5-turbo", // or "gpt-3.5-turbo" if you don't have GPT-4 access
+      model: "gpt-4", // or "gpt-3.5-turbo" if you don't have GPT-4 access
       messages: [
         { role: "system", content: "You are a helpful creative writer." },
         { role: "user", content: userPrompt },
