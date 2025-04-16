@@ -1,25 +1,16 @@
 // app/api/generateAudio/route.ts
 import { NextRequest, NextResponse } from "next/server";
-import { PollyClient, SynthesizeSpeechCommand } from "@aws-sdk/client-polly";
+import AWS from "aws-sdk";
+import { Readable } from "stream";
 
-// Initialize Polly client using your environment variables
-const pollyClient = new PollyClient({
-  region: process.env.AWS_POLLY_REGION, // for example, "us-west-1"
-  credentials: {
-    accessKeyId: process.env.AWS_ACCESS_KEY_ID || "",
-    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || "",
-  },
+// Configure AWS Polly with your credentials and region
+AWS.config.update({
+  accessKeyId: process.env.AWS_ACCESS_KEY_ID || "",
+  secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || "",
+  region: process.env.AWS_REGION || "us-west-1", // Use us-west-1 (Northern California) if needed
 });
 
-// Helper to convert a Readable stream into a Buffer
-function streamToBuffer(stream: any): Promise<Buffer> {
-  return new Promise((resolve, reject) => {
-    const chunks: any[] = [];
-    stream.on("data", (chunk: any) => chunks.push(chunk));
-    stream.on("error", reject);
-    stream.on("end", () => resolve(Buffer.concat(chunks)));
-  });
-}
+const polly = new AWS.Polly();
 
 export async function POST(request: NextRequest) {
   try {
@@ -31,48 +22,48 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log("Generating podcast audio for script:", script);
-
-    // Split the script into lines and remove host labels
-    const lines = script
+    // Remove labels and split into lines
+    const cleanedScript = script
+      .replace(/Host A:/gi, "")
+      .replace(/Host B:/gi, "")
+      .trim();
+    const lines = cleanedScript
       .split("\n")
-      .map((line) => line.replace(/^(Host A:|Host B:)\s*/i, "").trim())
-      .filter((line) => line.length > 0);
+      .map((line) => line.trim())
+      .filter(Boolean);
 
     const audioBuffers: Buffer[] = [];
+    let useMale = true; // Alternate voices
 
-    // Alternate voices for each line (or define your own logic)
-    const voices = ["Matthew", "Joanna"]; // male then female
-    lines.forEach((_, i) => {}); // placeholder if you want to customize further
-
-    for (let i = 0; i < lines.length; i++) {
-      const text = lines[i];
-      // Use male for even index, female for odd index
-      const voiceId = i % 2 === 0 ? voices[0] : voices[1];
-
-      const command = new SynthesizeSpeechCommand({
+    for (const line of lines) {
+      const params = {
         OutputFormat: "mp3",
-        Text: text,
-        VoiceId: voiceId,
+        Text: line,
+        VoiceId: useMale ? "Matthew" : "Joanna", // Change as desired
         TextType: "text",
-      });
+      };
 
-      const response = await pollyClient.send(command);
-      const buffer = await streamToBuffer(response.AudioStream);
-      audioBuffers.push(buffer);
+      // Synthesize speech for the line
+      const data = await polly.synthesizeSpeech(params).promise();
+      if (data.AudioStream instanceof Buffer) {
+        audioBuffers.push(data.AudioStream);
+      } else {
+        throw new Error("Failed to generate audio for a line");
+      }
+      useMale = !useMale;
     }
 
-    // Merge all the audio buffers; note: simple concatenation for demo purposes
-    const mergedBuffer = Buffer.concat(audioBuffers);
+    // Merge audio buffers
+    const mergedAudio = Buffer.concat(audioBuffers);
 
-    return new NextResponse(mergedBuffer, {
+    return new NextResponse(mergedAudio, {
       headers: {
         "Content-Type": "audio/mpeg",
         "Content-Disposition": "inline; filename=podcast.mp3",
       },
     });
   } catch (error: any) {
-    console.error("Error generating audio:", error);
+    console.error("AWS Polly audio generation error:", error);
     return NextResponse.json(
       { error: error.message || "Failed to generate audio" },
       { status: 500 }
