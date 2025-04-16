@@ -1,19 +1,9 @@
 // app/api/generateAudio/route.ts
 import { NextRequest, NextResponse } from "next/server";
-import AWS from "aws-sdk";
-
-// Configure AWS Polly
-AWS.config.update({
-  accessKeyId: process.env.AWS_ACCESS_KEY_ID || "",
-  secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || "",
-  region: process.env.AWS_REGION || "us-west-1",
-});
-
-const polly = new AWS.Polly();
 
 export async function POST(request: NextRequest) {
   try {
-    const { script } = (await request.json()) as { script?: string };
+    const { script } = await request.json();
     if (!script?.trim()) {
       return NextResponse.json(
         { error: "Script is required" },
@@ -21,34 +11,56 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Strip labels and split into non‑empty lines
+    // Clean and sanitize the script
     const cleanedScript = script
       .replace(/Host A:/gi, "")
       .replace(/Host B:/gi, "")
+      .replace(/intro music fades/gi, "") // Remove this line
       .trim();
 
-    const lines: string[] = cleanedScript
+    const lines = cleanedScript
       .split("\n")
-      .map((line: string) => line.trim())
-      .filter((line: string) => line.length > 0);
+      .map((line) => line.trim())
+      .filter((line) => line.length > 0);
+
+    // 🪵 Log cleaned lines to terminal for debug
+    console.log("🎧 Final script being sent to ElevenLabs:");
+    lines.forEach((line, idx) => {
+      console.log(`${idx + 1}. ${line}`);
+    });
 
     const audioBuffers: Buffer[] = [];
-    let useMale = true; // alternate voices
+    let useBrent = true;
 
     for (const line of lines) {
-      const params: AWS.Polly.SynthesizeSpeechInput = {
-        OutputFormat: "mp3",
-        Text: line,
-        VoiceId: useMale ? "Matthew" : "Joanna",
-        TextType: "text",
-      };
+      const voiceId = useBrent ? "VOICE_ID_BRENT" : "VOICE_ID_ERWEN";
 
-      const data = await polly.synthesizeSpeech(params).promise();
-      if (!data.AudioStream || !(data.AudioStream instanceof Buffer)) {
-        throw new Error("Failed to generate audio for line");
+      const response = await fetch(
+        `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "xi-api-key": process.env.ELEVENLABS_API_KEY || "",
+          },
+          body: JSON.stringify({
+            text: line,
+            model_id: "eleven_monolingual_v1",
+            voice_settings: {
+              stability: 0.5,
+              similarity_boost: 0.75,
+            },
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`Failed to generate audio: ${response.statusText}`);
       }
-      audioBuffers.push(data.AudioStream);
-      useMale = !useMale;
+
+      const audioBuffer = Buffer.from(await response.arrayBuffer());
+      audioBuffers.push(audioBuffer);
+      useBrent = !useBrent;
     }
 
     const mergedAudio = Buffer.concat(audioBuffers);
@@ -59,11 +71,13 @@ export async function POST(request: NextRequest) {
         "Content-Disposition": "inline; filename=podcast.mp3",
       },
     });
-  } catch (error: unknown) {
-    console.error("AWS Polly audio generation error:", error);
-    const message = error instanceof Error ? error.message : String(error);
+  } catch (error) {
+    console.error("❌ ElevenLabs audio generation error:", error);
     return NextResponse.json(
-      { error: message || "Failed to generate audio" },
+      {
+        error:
+          error instanceof Error ? error.message : "Failed to generate audio",
+      },
       { status: 500 }
     );
   }

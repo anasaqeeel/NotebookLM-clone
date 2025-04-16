@@ -24,7 +24,7 @@ export async function POST(request: NextRequest) {
       They discuss the benefits of ${
         prospectName || "Unknown Prospect"
       }’s business in the ${industry} field. 
-      Keep it under 5 minutes . 
+      Keep it under 4 minutes . 
       You can optionally address this extra question: ${
         question || "No question provided"
       }.
