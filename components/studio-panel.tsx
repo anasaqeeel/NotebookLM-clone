@@ -13,6 +13,13 @@ declare global {
   }
 }
 
+
+// Fix TS missing types
+type SpeechRecognitionEvent = Event & {
+  readonly results: SpeechRecognitionResultList;
+};
+
+
 export default function StudioPanel() {
   const { researchContent } = useResearchContext();
   const finalScript = researchContent.trim();
@@ -87,10 +94,13 @@ export default function StudioPanel() {
     setRecording(true);
     setQuestion("");
     recognition.start();
-    recognition.onresult = (ev:any) => {
-      const txt = Array.from(ev.results).map(r => r[0].transcript).join("");
+    recognition.onresult = (ev: SpeechRecognitionEvent) => {
+      const results = Array.from(ev.results as SpeechRecognitionResultList);
+      const txt = results.map(result => result[0].transcript).join("");
       setQuestion(txt);
     };
+    
+    
     recognition.onerror = (ev:any) => {
       setRecording(false);
       setQuestionError("Recognition error: " + ev.error);
