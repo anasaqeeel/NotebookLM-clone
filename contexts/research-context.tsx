@@ -1,4 +1,3 @@
-// contexts/research-context.tsx
 "use client"
 
 import { createContext, useContext, useState } from "react"
@@ -7,7 +6,7 @@ interface ResearchContextType {
   researchContent: string
   generateResearch: (query: string) => Promise<string>
   setResearchContent: (content: string) => void
-  sources: string[]  // Array of added source texts
+  sources: string[]
   setSources: (sources: string[]) => void
 }
 
@@ -18,11 +17,14 @@ export const ResearchProvider = ({ children }: { children: React.ReactNode }) =>
   const [sources, setSources] = useState<string[]>([])
 
   const generateResearch = async (query: string): Promise<string> => {
-    // Combine all source texts into a single context string
+    const trimmedQuery = query.trim()
+
+    if (!trimmedQuery) return "Please enter a valid question."
+
     const combinedContext = sources.length > 0 ? sources.join("\n") : ""
     const prompt = combinedContext
-      ? `Based on the following sources:\n${combinedContext}\nAnswer the following: ${query}`
-      : query
+      ? `Based on the following sources:\n${combinedContext}\nAnswer the following: ${trimmedQuery}`
+      : trimmedQuery
 
     try {
       const res = await fetch("/api/generateResearch", {
@@ -30,13 +32,15 @@ export const ResearchProvider = ({ children }: { children: React.ReactNode }) =>
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ topic: prompt }),
       })
+
       const data = await res.json()
-      const content = data.content || ""
+      const content = data.content || data.error || "No response from GPT"
+
       setResearchContent(content)
       return content
     } catch (err) {
       console.error("Failed to generate research", err)
-      return ""
+      return "An unexpected error occurred."
     }
   }
 
