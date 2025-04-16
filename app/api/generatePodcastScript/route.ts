@@ -5,7 +5,8 @@ import { NextRequest, NextResponse } from "next/server";
 import OpenAI from "openai";
 
 const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY || "",
+  apiKey:
+    "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",
 });
 
 export async function POST(request: NextRequest) {
@@ -36,7 +37,7 @@ export async function POST(request: NextRequest) {
     `;
 
     const completion = await openai.chat.completions.create({
-      model: "gpt-4", // or "gpt-3.5-turbo" if you don't have GPT-4 access
+      model: "gpt-3.5-turbo", // or "gpt-3.5-turbo" if you don't have GPT-4 access
       messages: [
         { role: "system", content: "You are a helpful creative writer." },
         { role: "user", content: userPrompt },
