@@ -1,57 +1,80 @@
+// app/api/generateAudio/route.ts
 import { NextRequest, NextResponse } from "next/server";
-import axios from "axios";
+import { PollyClient, SynthesizeSpeechCommand } from "@aws-sdk/client-polly";
 
-const ELEVEN_API_KEY = "sk_a999324ac760e40a5728bc0b2200ad46db2e27399e424ac5";
-const VOICE_MALE = "JBFqnCBsd6RMkjVDRZzb"; // e.g., "21m00Tcm4TlvDq8ikWAM"
-const VOICE_FEMALE = "JBFqnCBsd6RMkjVDRZzb"; // e.g., "EXAVITQu4vr4xnSDxMaL"
+// Initialize Polly client using your environment variables
+const pollyClient = new PollyClient({
+  region: process.env.AWS_POLLY_REGION, // for example, "us-west-1"
+  credentials: {
+    accessKeyId: process.env.AWS_ACCESS_KEY_ID || "",
+    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || "",
+  },
+});
+
+// Helper to convert a Readable stream into a Buffer
+function streamToBuffer(stream: any): Promise<Buffer> {
+  return new Promise((resolve, reject) => {
+    const chunks: any[] = [];
+    stream.on("data", (chunk: any) => chunks.push(chunk));
+    stream.on("error", reject);
+    stream.on("end", () => resolve(Buffer.concat(chunks)));
+  });
+}
 
 export async function POST(request: NextRequest) {
   try {
     const { script } = await request.json();
-    const lines = script.split("\n").filter(Boolean);
-
-    const audioChunks = [];
-
-    for (const line of lines) {
-      const [speaker, ...textParts] = line.split(":");
-      const text = textParts.join(":").trim();
-      if (!text) continue;
-
-      const voiceId = speaker.includes("Host A") ? VOICE_MALE : VOICE_FEMALE;
-      const response = await axios.post(
-        `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`,
-        {
-          text,
-          model_id: "eleven_monolingual_v1",
-          voice_settings: {
-            stability: 0.5,
-            similarity_boost: 0.75,
-          },
-        },
-        {
-          headers: {
-            "xi-api-key": ELEVEN_API_KEY,
-            "Content-Type": "application/json",
-            Accept: "audio/mpeg",
-          },
-          responseType: "arraybuffer",
-        }
+    if (!script || script.trim() === "") {
+      return NextResponse.json(
+        { error: "Script is required" },
+        { status: 400 }
       );
-
-      audioChunks.push(Buffer.from(response.data));
     }
 
-    const mergedAudio = Buffer.concat(audioChunks);
-    return new NextResponse(mergedAudio, {
+    console.log("Generating podcast audio for script:", script);
+
+    // Split the script into lines and remove host labels
+    const lines = script
+      .split("\n")
+      .map((line) => line.replace(/^(Host A:|Host B:)\s*/i, "").trim())
+      .filter((line) => line.length > 0);
+
+    const audioBuffers: Buffer[] = [];
+
+    // Alternate voices for each line (or define your own logic)
+    const voices = ["Matthew", "Joanna"]; // male then female
+    lines.forEach((_, i) => {}); // placeholder if you want to customize further
+
+    for (let i = 0; i < lines.length; i++) {
+      const text = lines[i];
+      // Use male for even index, female for odd index
+      const voiceId = i % 2 === 0 ? voices[0] : voices[1];
+
+      const command = new SynthesizeSpeechCommand({
+        OutputFormat: "mp3",
+        Text: text,
+        VoiceId: voiceId,
+        TextType: "text",
+      });
+
+      const response = await pollyClient.send(command);
+      const buffer = await streamToBuffer(response.AudioStream);
+      audioBuffers.push(buffer);
+    }
+
+    // Merge all the audio buffers; note: simple concatenation for demo purposes
+    const mergedBuffer = Buffer.concat(audioBuffers);
+
+    return new NextResponse(mergedBuffer, {
       headers: {
         "Content-Type": "audio/mpeg",
         "Content-Disposition": "inline; filename=podcast.mp3",
       },
     });
-  } catch (error) {
-    console.error("Audio generation error:", error);
+  } catch (error: any) {
+    console.error("Error generating audio:", error);
     return NextResponse.json(
-      { error: "Failed to generate audio" },
+      { error: error.message || "Failed to generate audio" },
       { status: 500 }
     );
   }

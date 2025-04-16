@@ -1,51 +1,75 @@
 // app/api/insertQuestionAudio/route.ts
-
 import { NextRequest, NextResponse } from "next/server";
-import axios from "axios";
+import { PollyClient, SynthesizeSpeechCommand } from "@aws-sdk/client-polly";
 
-// Reuse previously defined constants for ElevenLabs API key and voice IDs
+const pollyClient = new PollyClient({
+  region: process.env.AWS_POLLY_REGION,
+  credentials: {
+    accessKeyId: process.env.AWS_ACCESS_KEY_ID || "",
+    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || "",
+  },
+});
 
-const VOICE_FEMALE = "EXAVITQu4vr4xnSDxMaL"; // Use a real female voice ID
+function streamToBuffer(stream: any): Promise<Buffer> {
+  return new Promise((resolve, reject) => {
+    const chunks: any[] = [];
+    stream.on("data", (chunk: any) => chunks.push(chunk));
+    stream.on("error", reject);
+    stream.on("end", () => resolve(Buffer.concat(chunks)));
+  });
+}
 
 export async function POST(request: NextRequest) {
   try {
-    const { script, pauseTime, hostAnswer } = await request.json();
-    const audioChunks: Buffer[] = [];
+    const { hostAnswer } = await request.json();
+    if (!hostAnswer || hostAnswer.trim() === "") {
+      return NextResponse.json(
+        { error: "Host answer is required" },
+        { status: 400 }
+      );
+    }
 
-    // Create response audio for the question
-    const response = await axios.post(
-      `https://api.elevenlabs.io/v1/text-to-speech/${VOICE_FEMALE}`,
-      {
-        text: hostAnswer,
-        model_id: "eleven_monolingual_v1",
-        voice_settings: { stability: 0.5, similarity_boost: 0.75 },
-      },
-      {
-        headers: {
-          "xi-api-key": "sk_a999324ac760e40a5728bc0b2200ad46db2e27399e424ac5",
-          "Content-Type": "application/json",
-          Accept: "audio/mpeg",
-        },
-        responseType: "arraybuffer",
-      }
-    );
+    // Remove any host labels from the answer
+    const cleanedAnswer = hostAnswer
+      .replace(/^(Host A:|Host B:)\s*/gi, "")
+      .trim();
 
-    audioChunks.push(Buffer.from(response.data));
+    // For demonstration, if the answer contains a delimiter (e.g., '---'), split it;
+    // otherwise duplicate it so both voices are used.
+    const parts = cleanedAnswer
+      .split("---")
+      .map((p) => p.trim())
+      .filter((p) => p.length > 0);
+    let answerParts =
+      parts.length >= 2 ? parts.slice(0, 2) : [cleanedAnswer, cleanedAnswer];
 
-    // TODO: Merge existing podcast audio and question response, inserting it at the pauseTime
+    const voices = ["Matthew", "Joanna"]; // male then female
+    const audioBuffers: Buffer[] = [];
 
-    const mergedAudio = Buffer.concat(audioChunks);
+    for (let i = 0; i < answerParts.length; i++) {
+      const command = new SynthesizeSpeechCommand({
+        OutputFormat: "mp3",
+        Text: answerParts[i],
+        VoiceId: voices[i],
+        TextType: "text",
+      });
+      const response = await pollyClient.send(command);
+      const buffer = await streamToBuffer(response.AudioStream);
+      audioBuffers.push(buffer);
+    }
 
-    return new NextResponse(mergedAudio, {
+    const mergedBuffer = Buffer.concat(audioBuffers);
+
+    return new NextResponse(mergedBuffer, {
       headers: {
         "Content-Type": "audio/mpeg",
-        "Content-Disposition": "inline; filename=updated_podcast.mp3",
+        "Content-Disposition": "inline; filename=followup_podcast.mp3",
       },
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error inserting question audio:", error);
     return NextResponse.json(
-      { error: "Failed to insert question audio" },
+      { error: error.message || "Failed to insert question audio" },
       { status: 500 }
     );
   }
