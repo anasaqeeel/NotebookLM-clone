@@ -1,4 +1,3 @@
-// app/api/generateAudio/route.ts
 import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(request: NextRequest) {
@@ -18,10 +17,10 @@ export async function POST(request: NextRequest) {
       .replace(/intro music fades/gi, "") // Remove this line
       .trim();
 
-    const lines = cleanedScript
+    const lines: string[] = cleanedScript
       .split("\n")
-      .map((line) => line.trim())
-      .filter((line) => line.length > 0);
+      .map((line: string) => line.trim())
+      .filter((line: string) => line.length > 0);
 
     // 🪵 Log cleaned lines to terminal for debug
     console.log("🎧 Final script being sent to ElevenLabs:");
@@ -33,7 +32,7 @@ export async function POST(request: NextRequest) {
     let useBrent = true;
 
     for (const line of lines) {
-      const voiceId = useBrent ? "VOICE_ID_BRENT" : "VOICE_ID_ERWEN";
+      const voiceId = useBrent ? "VOICE_ID_BRENT" : "VOICE_ID_ERWEN"; // Replace these with real IDs below
 
       const response = await fetch(
         `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`,
