@@ -32,7 +32,9 @@ export async function POST(request: NextRequest) {
     let useBrent = true;
 
     for (const line of lines) {
-      const voiceId = useBrent ? "VOICE_ID_BRENT" : "VOICE_ID_ERWEN"; // Replace these with real IDs below
+      const voiceId = useBrent
+        ? "esy0r39YPLQjOczyOib8" // ✅ Brent
+        : "ntZTccPdJ1RjBKzcima9"; // ✅ Erwen
 
       const response = await fetch(
         `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`,
