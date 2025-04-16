@@ -1,46 +1,72 @@
 // app/api/insertQuestionAudio/route.ts
 import { NextRequest, NextResponse } from "next/server";
-import AWS from "aws-sdk";
+import axios from "axios";
 
-// Configure Polly
-AWS.config.update({
-  accessKeyId: process.env.AWS_ACCESS_KEY_ID || "",
-  secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || "",
-  region: process.env.AWS_REGION || "us-west-1",
-});
-const polly = new AWS.Polly();
+// Replace with your real ElevenLabs keys and voice IDs via env
+const ELEVEN_API_KEY = process.env.ELEVEN_API_KEY!;
+const VOICE_MALE = "JBFqnCBsd6RMkjVDRZzb"; // male ID
+const VOICE_FEMALE = "EXAVITQu4vr4xnSDxMaL"; // female ID
 
 export async function POST(request: NextRequest) {
   try {
-    const { hostAnswer } = await request.json();
-    if (!hostAnswer || hostAnswer.trim() === "") {
-      return NextResponse.json({ error: "Host answer is required" }, { status: 400 });
+    const { hostAnswer } = (await request.json()) as { hostAnswer?: string };
+    if (!hostAnswer?.trim()) {
+      return NextResponse.json(
+        { error: "hostAnswer is required" },
+        { status: 400 }
+      );
     }
 
-    // Remove any host labels
-    const cleanedAnswer = hostAnswer.replace(/Host A:/gi, "").replace(/Host B:/gi, "").trim();
+    // Split into lines of non‑empty strings
+    const lines: string[] = hostAnswer
+      .split("\n")
+      .map((l: string) => l.trim())
+      .filter((l: string) => l.length > 0);
 
-    // For follow-up, alternate voices as needed; for example, use female voice only:
-    const params = {
-      OutputFormat: "mp3",
-      Text: cleanedAnswer,
-      VoiceId: "Joanna", // Use the desired female voice for follow-up
-      TextType: "text",
-    };
+    const chunks: Buffer[] = [];
 
-    const data = await polly.synthesizeSpeech(params).promise();
-    if (!(data.AudioStream instanceof Buffer)) {
-      throw new Error("Failed to generate follow-up audio.");
+    for (const line of lines) {
+      // Expect "Host A: ..." or "Host B: ..."
+      const [speakerLabel, ...rest] = line.split(":");
+      const text = rest.join(":").trim();
+      if (!text) continue;
+
+      const voiceId = /A$/i.test(speakerLabel) ? VOICE_MALE : VOICE_FEMALE;
+
+      const resp = await axios.post<ArrayBuffer>(
+        `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`,
+        {
+          text,
+          model_id: "eleven_monolingual_v1",
+          voice_settings: { stability: 0.5, similarity_boost: 0.75 },
+        },
+        {
+          headers: {
+            "xi-api-key": ELEVEN_API_KEY,
+            "Content-Type": "application/json",
+            Accept: "audio/mpeg",
+          },
+          responseType: "arraybuffer",
+        }
+      );
+
+      chunks.push(Buffer.from(resp.data));
     }
 
-    return new NextResponse(data.AudioStream, {
+    const merged = Buffer.concat(chunks);
+
+    return new NextResponse(merged, {
       headers: {
         "Content-Type": "audio/mpeg",
-        "Content-Disposition": "inline; filename=followup_podcast.mp3",
+        "Content-Disposition": "inline; filename=followup.mp3",
       },
     });
-  } catch (error: any) {
-    console.error("Follow-up audio generation error:", error);
-    return NextResponse.json({ error: error.message || "Failed to generate follow-up audio" }, { status: 500 });
+  } catch (err: unknown) {
+    console.error("insertQuestionAudio error:", err);
+    const message = err instanceof Error ? err.message : String(err);
+    return NextResponse.json(
+      { error: message || "Failed to insert question audio" },
+      { status: 500 }
+    );
   }
 }

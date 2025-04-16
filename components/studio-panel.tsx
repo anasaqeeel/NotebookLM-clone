@@ -1,7 +1,8 @@
+// components/StudioPanel.tsx
 "use client";
 
 import { useState, useRef } from "react";
-import { Info, Send, Mic, MicOff } from "lucide-react";
+import { Info, Send, Mic, MicOff, Pause } from "lucide-react";
 import AudioPlayer from "./audio-player";
 import { useResearchContext } from "@/contexts/research-context";
 
@@ -16,19 +17,22 @@ export default function StudioPanel() {
   const { researchContent } = useResearchContext();
   const finalScript = researchContent.trim();
 
+  // Main podcast
+  const audioRef = useRef<HTMLAudioElement | null>(null);
   const [audioUrl, setAudioUrl] = useState("");
+  const [showPlayer, setShowPlayer] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
-  const [showPlayer, setShowPlayer] = useState(false);
-
-  // Main audio ref
-  const audioRef = useRef<HTMLAudioElement | null>(null);
   const [pauseTime, setPauseTime] = useState(0);
 
-  // For follow-up Q&A
+  // Follow‑up Q&A
   const [question, setQuestion] = useState("");
-  const [isAskingQuestion, setIsAskingQuestion] = useState(false);
+  const [isAsking, setIsAsking] = useState(false);
   const [questionError, setQuestionError] = useState("");
+
+  // snippet audio
+  const snippetRef = useRef<HTMLAudioElement | null>(null);
+  const [snippetPlaying, setSnippetPlaying] = useState(false);
 
   // Speech recognition
   const [recording, setRecording] = useState(false);
@@ -44,251 +48,223 @@ export default function StudioPanel() {
     recognition.interimResults = false;
   }
 
-  // ---- Microphone Handling ----
-  const startRecording = () => {
-    if (!recognition) return;
-    setRecording(true);
-    setQuestion("");
-    // 1) Immediately pause the main audio
-    pauseMainAudioIfPlaying();
-
-    // 2) Start recognition
-    recognition.start();
-    recognition.onresult = (event: any) => {
-      const transcript = Array.from(event.results)
-        .map((result: any) => result[0].transcript)
-        .join("");
-      setQuestion(transcript);
-    };
-    recognition.onerror = (event: any) => {
-      console.error("Speech recognition error:", event.error);
-      setRecording(false);
-      setQuestionError("Speech recognition error: " + event.error);
-    };
-    recognition.onend = () => {
-      setRecording(false);
-    };
-  };
-
-  const stopRecording = () => {
-    if (!recognition) return;
-    recognition.stop();
-    setRecording(false);
-  };
-
-  // ---- Pause the main audio if it's currently playing ----
-  const pauseMainAudioIfPlaying = () => {
-    if (audioRef.current) {
-      // Store the currentTime, in case we need to resume later
-      setPauseTime(audioRef.current.currentTime);
-      audioRef.current.pause();
+  const pauseMain = () => {
+    const a = audioRef.current;
+    if (a) {
+      setPauseTime(a.currentTime);
+      a.pause();
     }
   };
 
-  // ---- Generate & Play Main Podcast Audio ----
-  const handleGenerateAndPlay = async () => {
-    if (!finalScript) {
-      setErrorMsg("No podcast script available. Generate it first in the Podcast tab.");
-      return;
-    }
+  // Generate & play main podcast
+  const handleGenerate = async () => {
+    if (!finalScript) return setErrorMsg("Generate a script first.");
     setIsGenerating(true);
-    setAudioUrl("");
     setShowPlayer(false);
     setErrorMsg("");
-
     try {
       const res = await fetch("/api/generateAudio", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ script: finalScript }),
+        headers: { "Content-Type": "application/json" },
       });
-
-      if (!res.ok) {
-        const errText = await res.text();
-        throw new Error("Audio generation failed: " + errText);
-      }
-
+      if (!res.ok) throw new Error(await res.text());
       const blob = await res.blob();
-      if (blob.size === 0) {
-        throw new Error("Received empty audio from TTS service.");
-      }
       const url = URL.createObjectURL(blob);
       setAudioUrl(url);
       setShowPlayer(true);
-    } catch (err: any) {
-      setErrorMsg(err.message);
+    } catch (e: any) {
+      setErrorMsg(e.message);
     } finally {
       setIsGenerating(false);
     }
   };
 
-  // ---- Download main podcast audio ----
-  const handleDownloadAudio = () => {
-    if (audioUrl) {
-      const link = document.createElement("a");
-      link.href = audioUrl;
-      link.download = "podcast.mp3";
-      link.click();
-    }
+  // Record by mic
+  const startRec = () => {
+    if (!recognition) return;
+    pauseMain();
+    setRecording(true);
+    setQuestion("");
+    recognition.start();
+    recognition.onresult = (ev:any) => {
+      const txt = Array.from(ev.results).map(r => r[0].transcript).join("");
+      setQuestion(txt);
+    };
+    recognition.onerror = (ev:any) => {
+      setRecording(false);
+      setQuestionError("Recognition error: " + ev.error);
+    };
+    recognition.onend = () => setRecording(false);
   };
 
-  // ---- Send typed or recognized question to the TTS snippet route ----
-  const handleAskQuestion = async () => {
-    if (!finalScript || !question.trim()) {
-      setQuestionError("Please enter a question and ensure a podcast is playing.");
-      return;
-    }
-    setQuestionError("");
-    setIsAskingQuestion(true);
+  const stopRec = () => {
+    recognition?.stop();
+    setRecording(false);
+  };
 
-    // Always pause main audio
-    pauseMainAudioIfPlaying();
+  // Ask question
+  const handleAsk = async () => {
+    if (!question.trim()) return setQuestionError("Type or record a question.");
+    setQuestionError("");
+    setIsAsking(true);
+    pauseMain();
 
     try {
-      // 1) Get GPT short answer
-      const answerRes = await fetch("/api/answerQuestion", {
+      // 1) GPT answer
+      const ansRes = await fetch("/api/answerQuestion", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ question, context: finalScript }),
-      });
-      const { response: hostAnswer } = await answerRes.json();
-      if (!hostAnswer) throw new Error("Failed to generate host answer.");
-
-      // 2) TTS for snippet
-      const audioRes = await fetch("/api/insertQuestionAudio", {
-        method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ hostAnswer }),
       });
-      if (!audioRes.ok) {
-        const errText = await audioRes.text();
-        throw new Error("Follow-up audio generation failed: " + errText);
-      }
-      const snippetBlob = await audioRes.blob();
-      if (snippetBlob.size === 0) throw new Error("Received empty follow-up snippet.");
+      const { response: hostAnswer } = await ansRes.json();
+      if (!hostAnswer) throw new Error("No answer");
 
-      // 3) Play snippet in background, no second player in UI
-      const snippetUrl = URL.createObjectURL(snippetBlob);
-      const snippetAudio = new Audio(snippetUrl);
-      snippetAudio.onended = () => {
-        // Once snippet ends, resume main audio
+      // 2) get merged snippet
+      const ttsRes = await fetch("/api/insertQuestionAudio", {
+        method: "POST",
+        body: JSON.stringify({ hostAnswer }),
+        headers: { "Content-Type": "application/json" },
+      });
+      if (!ttsRes.ok) throw new Error(await ttsRes.text());
+      const blob = await ttsRes.blob();
+      const url = URL.createObjectURL(blob);
+
+      // 3) play snippet
+      const sn = new Audio(url);
+      snippetRef.current = sn;
+      sn.onplay = () => setSnippetPlaying(true);
+      sn.onended = () => {
+        setSnippetPlaying(false);
+        // resume main
         if (audioRef.current) {
           audioRef.current.currentTime = pauseTime;
-          audioRef.current.play().catch(e => console.error("Resume error:", e));
+          audioRef.current.play().catch(() => {});
         }
-        setIsAskingQuestion(false);
+        setIsAsking(false);
       };
-      snippetAudio.play().catch(e => {
-        console.error("Snippet playback error:", e);
-        setIsAskingQuestion(false);
-      });
-    } catch (err: any) {
-      console.error("Follow-up error:", err);
-      setQuestionError(err.message);
-      setIsAskingQuestion(false);
+      sn.play().catch(e => { throw e; });
+    } catch (e: any) {
+      setQuestionError(e.message);
+      setIsAsking(false);
     } finally {
       setQuestion("");
     }
   };
 
+  // Pause snippet & resume main
+  const handlePauseSnippet = () => {
+    snippetRef.current?.pause();
+    setSnippetPlaying(false);
+    // resume main
+    if (audioRef.current) {
+      audioRef.current.currentTime = pauseTime;
+      audioRef.current.play().catch(() => {});
+    }
+    setIsAsking(false);
+  };
+
   return (
     <div className="h-full flex flex-col p-4">
       {/* Header */}
-      <div className="border-b border-purple-100 flex items-center justify-between pb-4">
-        <h2 className="text-lg font-medium text-gray-800">Audio Studio</h2>
-        <button className="text-gray-600 hover:text-[#6a5acd]">
-          <Info className="h-5 w-5" />
-        </button>
+      <div className="border-b pb-4 flex justify-between">
+        <h2 className="text-lg font-medium">Audio Studio</h2>
+        <Info className="text-gray-600 hover:text-purple-700 cursor-pointer" />
       </div>
 
-      <div className="flex-1 overflow-auto">
-        {/* Audio Overview */}
-        <div className="mt-4 mb-6">
-          <h3 className="text-lg font-medium text-gray-800 mb-2">Audio Overview</h3>
-          {finalScript ? (
-            <p className="text-sm text-gray-700 mb-4">
-              Podcast script is ready for audio generation.
-            </p>
-          ) : (
-            <p className="text-sm text-gray-700 mb-4">
-              No podcast script generated yet. Please create one in the Podcast tab.
-            </p>
-          )}
+      <div className="flex-1 overflow-auto space-y-6">
+        {/* Generate / Play */}
+        <div>
+          <h3 className="font-medium mb-2">Audio Overview</h3>
+          <p className="text-sm mb-4">
+            {finalScript
+              ? "Podcast script is ready."
+              : "No script yet; generate in the Podcast tab."}
+          </p>
 
-          {/* Generate & Play Button */}
           {finalScript && !showPlayer && (
             <button
-              onClick={handleGenerateAndPlay}
+              onClick={handleGenerate}
               disabled={isGenerating}
-              className={`w-full py-2 px-4 rounded-md transition-colors ${
+              className={`w-full py-2 rounded ${
                 isGenerating
-                  ? "bg-gray-300 text-gray-500 cursor-not-allowed"
-                  : "bg-[#6a5acd] hover:bg-[#5849c0] text-white"
+                  ? "bg-gray-300 text-gray-500"
+                  : "bg-purple-600 text-white hover:bg-purple-700"
               }`}
             >
-              {isGenerating ? "Generating Audio..." : "Generate & Play Podcast"}
+              {isGenerating ? "Generating…" : "Generate & Play Podcast"}
             </button>
           )}
-          {errorMsg && <p className="text-red-500 text-sm mt-2">{errorMsg}</p>}
+          {errorMsg && <p className="text-red-500 mt-2">{errorMsg}</p>}
 
-          {/* Single Audio Player for the main audio */}
-          {showPlayer && audioUrl && (
-            <div className="mt-4 space-y-4">
+          {showPlayer && (
+            <>
               <AudioPlayer ref={audioRef} audioUrl={audioUrl} />
               <button
-                onClick={handleDownloadAudio}
-                className="w-full py-2 px-4 rounded-md bg-green-600 text-white hover:bg-green-700 transition-colors"
+                onClick={() => {
+                  const a = audioRef.current;
+                  if (a) {
+                    const link = document.createElement("a");
+                    link.href = a.src;
+                    link.download = "podcast.mp3";
+                    link.click();
+                  }
+                }}
+                className="w-full mt-2 py-2 bg-green-600 text-white rounded hover:bg-green-700"
               >
-                Download Podcast Audio
+                Download Podcast
               </button>
-            </div>
+            </>
           )}
         </div>
 
-        {/* Follow-Up Interaction */}
-        <div className="mt-6 bg-purple-50 p-4 rounded-lg">
-          <h4 className="font-medium text-gray-800 mb-2">Ask a Follow-Up Question</h4>
-          <p className="text-sm text-gray-600 mb-3">
-            To interrupt the podcast, you can record your question or type it below.
+        {/* Follow‑up Q&A */}
+        <div className="bg-purple-50 p-4 rounded">
+          <h4 className="font-medium mb-2">Ask a Follow‑Up Question</h4>
+          <p className="text-sm mb-3">
+            Tap the mic to speak, or type your question, then Send.
           </p>
 
-          {/* Microphone Record + Text Input Row */}
+          {/* Record / Type / Send */}
           <div className="flex items-center space-x-2 mb-3">
-            {/* Microphone toggle */}
             <button
-              onClick={recording ? stopRecording : startRecording}
-              className={`rounded-full p-2 ${
-                recording ? "bg-red-500" : "bg-[#6a5acd]"
+              onClick={recording ? stopRec : startRec}
+              className={`p-2 rounded-full ${
+                recording ? "bg-red-500" : "bg-purple-600"
               } text-white`}
             >
-              {recording ? <MicOff size={20} /> : <Mic size={20} />}
+              {recording ? <MicOff /> : <Mic />}
             </button>
-
-            {/* Text input */}
             <input
-              type="text"
+              className="flex-1 p-2 border rounded focus:ring-2 focus:ring-purple-600"
+              placeholder="Your question…"
               value={question}
-              onChange={(e) => setQuestion(e.target.value)}
-              placeholder="Your follow-up question..."
-              className="flex-1 p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#6a5acd]"
-              disabled={isAskingQuestion}
+              onChange={e => setQuestion(e.target.value)}
+              disabled={isAsking}
             />
-
-            {/* Send button */}
             <button
-              onClick={handleAskQuestion}
-              disabled={!question.trim() || isAskingQuestion}
-              className={`rounded-md px-4 py-2 text-white ${
-                !question.trim() || isAskingQuestion
-                  ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+              onClick={handleAsk}
+              disabled={!question.trim() || isAsking}
+              className={`px-4 py-2 rounded text-white ${
+                !question.trim() || isAsking
+                  ? "bg-gray-300 text-gray-500"
                   : "bg-blue-600 hover:bg-blue-700"
               }`}
             >
-              <Send size={20} />
+              <Send />
             </button>
           </div>
+          {questionError && <p className="text-red-500">{questionError}</p>}
 
-          {questionError && <p className="text-red-500 text-sm">{questionError}</p>}
+          {/* Pause‑Snippet Button */}
+          {snippetPlaying && (
+            <button
+              onClick={handlePauseSnippet}
+              className="mt-2 flex items-center space-x-1 text-purple-700 hover:text-purple-900"
+            >
+              <Pause /> <span>Pause Snippet</span>
+            </button>
+          )}
         </div>
       </div>
     </div>
