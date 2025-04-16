@@ -1,9 +1,10 @@
 // components/SourcesPanel.tsx
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Plus, FileText } from "lucide-react"
 import PasteTextModal from "@/components/paste-text-modal"
+import { useResearchContext } from "@/contexts/research-context"
 
 interface Source {
   id: string
@@ -13,7 +14,13 @@ interface Source {
 
 export default function SourcesPanel() {
   const [isPasteModalOpen, setIsPasteModalOpen] = useState(false)
-  const [sources, setSources] = useState<Source[]>([])
+  const [localSources, setLocalSources] = useState<Source[]>([])
+  const { setSources } = useResearchContext()
+
+  useEffect(() => {
+    // Update the global sources with the names from the local sources array
+    setSources(localSources.map(source => source.name))
+  }, [localSources, setSources])
 
   const handleAddSource = (text: string) => {
     const newSource: Source = {
@@ -21,7 +28,7 @@ export default function SourcesPanel() {
       name: text,
       checked: true,
     }
-    setSources([...sources, newSource])
+    setLocalSources(prev => [...prev, newSource])
   }
 
   return (
@@ -38,10 +45,10 @@ export default function SourcesPanel() {
         </button>
       </div>
       <div className="p-4 text-sm">
-        {sources.length === 0 ? (
+        {localSources.length === 0 ? (
           <p className="text-gray-700">No sources added yet.</p>
         ) : (
-          sources.map((source) => (
+          localSources.map((source) => (
             <div key={source.id} className="flex items-center mb-2">
               <input
                 type="checkbox"
@@ -58,7 +65,11 @@ export default function SourcesPanel() {
           ))
         )}
       </div>
-      <PasteTextModal isOpen={isPasteModalOpen} onClose={() => setIsPasteModalOpen(false)} onSubmit={handleAddSource} />
+      <PasteTextModal
+        isOpen={isPasteModalOpen}
+        onClose={() => setIsPasteModalOpen(false)}
+        onSubmit={handleAddSource}
+      />
     </div>
   )
 }
