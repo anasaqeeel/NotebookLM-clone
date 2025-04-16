@@ -1,13 +1,14 @@
+// components/NotebookInterface.tsx
 "use client"
 
-import { useState } from "react";
-import ChatPanel from "@/components/chat-panel";
-import StudioPanel from "@/components/studio-panel";
-import SourcesPanel from "@/components/sources-panel";
-import PodcastGenerator from "@/components/PodcastGenerator";
+import { useState } from "react"
+import ChatPanel from "@/components/chat-panel"
+import StudioPanel from "@/components/studio-panel"
+import SourcesPanel from "@/components/sources-panel"
+import PodcastGenerator from "@/components/PodcastGenerator"
 
 export default function NotebookInterface() {
-  const [activeTab, setActiveTab] = useState<"research" | "sources" | "podcast">("research");
+  const [activeTab, setActiveTab] = useState<"research" | "sources" | "podcast">("research")
 
   return (
     <div className="flex flex-col bg-white rounded-xl shadow-lg overflow-hidden border border-purple-200">

@@ -1,3 +1,4 @@
+// components/PodcastGenerator.tsx
 "use client"
 
 import { useState } from "react"
@@ -8,7 +9,6 @@ export default function PodcastGenerator() {
   const [industry, setIndustry] = useState("")
   const [prospectName, setProspectName] = useState("")
   const [question, setQuestion] = useState("")
-  const [script, setScript] = useState("")
   const [status, setStatus] = useState("idle")
   const [error, setError] = useState("")
 
@@ -19,7 +19,6 @@ export default function PodcastGenerator() {
     }
     setError("")
     setStatus("generating")
-    setScript("")
 
     try {
       const res = await fetch("/api/generatePodcastScript", {
@@ -33,7 +32,7 @@ export default function PodcastGenerator() {
         setStatus("idle")
         return
       }
-      setScript(data.script)
+      // Store generated script in context (but do not show on screen)
       setResearchContent(data.script)
       setStatus("done")
     } catch (err: any) {
@@ -45,8 +44,8 @@ export default function PodcastGenerator() {
   return (
     <div className="p-6 space-y-6 h-full overflow-auto">
       <div>
-        <h2 className="text-2xl font-bold mb-2 text-gray-800">Podcast Generator (NotebookLM Style)</h2>
-        <p className="text-gray-600 mb-4">Create a professional podcast script based on your inputs</p>
+        <h2 className="text-2xl font-bold mb-2 text-gray-800">Podcast Generator</h2>
+        <p className="text-gray-600 mb-4">Enter your custom text to create a professional podcast script. The generated script will be used for audio synthesis but will not be displayed.</p>
       </div>
 
       <div className="space-y-4 bg-purple-50 p-6 rounded-lg">
@@ -98,15 +97,7 @@ export default function PodcastGenerator() {
           <p className="text-red-600">{error}</p>
         </div>
       )}
-
-      {script && (
-        <div className="bg-white border border-purple-200 p-6 rounded-lg shadow-sm">
-          <h3 className="font-bold text-lg mb-3 text-gray-800">Generated Podcast Script</h3>
-          <p className="mt-4 text-sm text-gray-600">
-            Go to the Audio Studio panel to generate and listen to this podcast.
-          </p>
-        </div>
-      )}
+      {/* Note: The generated script is stored in context and not displayed on screen */}
     </div>
   )
 }

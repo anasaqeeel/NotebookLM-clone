@@ -1,16 +1,27 @@
+// components/SourcesPanel.tsx
 "use client"
 
 import { useState } from "react"
 import { Plus, FileText } from "lucide-react"
 import PasteTextModal from "@/components/paste-text-modal"
 
+interface Source {
+  id: string
+  name: string
+  checked: boolean
+}
+
 export default function SourcesPanel() {
   const [isPasteModalOpen, setIsPasteModalOpen] = useState(false)
-  const [sources, setSources] = useState([{ id: "pasted-text", name: "Digital Marketing Strategy", checked: true }])
+  const [sources, setSources] = useState<Source[]>([])
 
   const handleAddSource = (text: string) => {
-    // In a real implementation, this would process the text and add it as a source
-    console.log("Added source:", text)
+    const newSource: Source = {
+      id: Date.now().toString(),
+      name: text,
+      checked: true,
+    }
+    setSources([...sources, newSource])
   }
 
   return (
@@ -27,35 +38,26 @@ export default function SourcesPanel() {
         </button>
       </div>
       <div className="p-4 text-sm">
-        <div className="flex items-center mb-4">
-          <input
-            type="checkbox"
-            id="select-all"
-            className="h-4 w-4 rounded border-gray-300 text-[#6a5acd] focus:ring-[#6a5acd]"
-            checked={true}
-            onChange={() => {}}
-          />
-          <label htmlFor="select-all" className="ml-2 text-gray-700">
-            Select all sources
-          </label>
-        </div>
-        {sources.map((source) => (
-          <div key={source.id} className="flex items-center mb-2">
-            <input
-              type="checkbox"
-              id={source.id}
-              className="h-4 w-4 rounded border-gray-300 text-[#6a5acd] focus:ring-[#6a5acd]"
-              checked={source.checked}
-              onChange={() => {}}
-            />
-            <label htmlFor={source.id} className="ml-2 flex items-center text-gray-700">
-              <FileText className="h-4 w-4 mr-2 text-[#6a5acd]" />
-              {source.name}
-            </label>
-          </div>
-        ))}
+        {sources.length === 0 ? (
+          <p className="text-gray-700">No sources added yet.</p>
+        ) : (
+          sources.map((source) => (
+            <div key={source.id} className="flex items-center mb-2">
+              <input
+                type="checkbox"
+                id={source.id}
+                className="h-4 w-4 rounded border-gray-300 text-[#6a5acd] focus:ring-[#6a5acd]"
+                checked={source.checked}
+                onChange={() => {}}
+              />
+              <label htmlFor={source.id} className="ml-2 flex items-center text-gray-700">
+                <FileText className="h-4 w-4 mr-2 text-[#6a5acd]" />
+                {source.name}
+              </label>
+            </div>
+          ))
+        )}
       </div>
-
       <PasteTextModal isOpen={isPasteModalOpen} onClose={() => setIsPasteModalOpen(false)} onSubmit={handleAddSource} />
     </div>
   )
