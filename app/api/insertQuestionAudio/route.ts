@@ -4,8 +4,8 @@ import axios from "axios";
 
 // Replace with your real ElevenLabs keys and voice IDs via env
 const ELEVEN_API_KEY = process.env.ELEVEN_API_KEY!;
-const VOICE_MALE = "JBFqnCBsd6RMkjVDRZzb"; // male ID
-const VOICE_FEMALE = "EXAVITQu4vr4xnSDxMaL"; // female ID
+const VOICE_MALE = "esy0r39YPLQjOczyOib8"; // male ID
+const VOICE_FEMALE = "ntZTccPdJ1RjBKzcima9"; // female ID
 
 export async function POST(request: NextRequest) {
   try {
