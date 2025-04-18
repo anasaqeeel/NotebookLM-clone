@@ -16,7 +16,9 @@ export async function POST(request: NextRequest) {
     const cleanedTopic = topic.trim();
 
     const completion = await openai.chat.completions.create({
-      model: "gpt-4", // Or use "gpt-3.5-turbo"
+      // model: "gpt-4", // Or use "gpt-3.5-turbo"
+      model: "gpt-3.5-turbo",
+
       messages: [
         {
           role: "system",

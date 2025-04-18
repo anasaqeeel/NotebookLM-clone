@@ -1,5 +1,5 @@
 // app/api/generatePodcastScript/route.ts
-export const runtime = "nodejs"; // 👈 this forces serverless instead of edge
+export const runtime = "nodejs";
 
 import { NextRequest, NextResponse } from "next/server";
 import OpenAI from "openai";
@@ -17,28 +17,41 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
-    // Build user prompt
+
     const userPrompt = `
-      Please create a short “podcast style” script with two hosts: 
-      Host A (male) and Host B (female). 
-      They discuss the benefits of ${
-        prospectName || "Unknown Prospect"
-      }’s business in the ${industry} field. 
-      Keep it under 4 minutes . 
-      You can optionally address this extra question: ${
-        question || "No question provided"
-      }.
-
-      Format lines like:
-
-      Host A: ...
-      Host B: ...
+    Write a podcast script with **exactly** two hosts:
+    
+    - Male host: Chris
+    - Female host: Jenna
+    
+    Do **not** mention any other names like Alex, Sarah, or any narrator.
+    Do **not** include sound directions like "[music fades in]" or "[theme fades]".
+    
+    Make it sound like a natural, energetic, real podcast conversation between Chris and Jenna. They should discuss the benefits of ${
+      prospectName || "Unknown Prospect"
+    }'s business in the ${industry} field.
+    
+    If a user question is provided, include it **inside** the dialogue naturally.
+    
+    The format must be:
+    
+    Chris: ...
+    Jenna: ...
+    Chris: ...
+    Jenna: ...
+    
+    User Question: "${question || "No question provided"}"
+    
+    DO NOT ADD ANYTHING OUTSIDE THE DIALOGUE.
     `;
 
     const completion = await openai.chat.completions.create({
-      model: "gpt-4", // or "gpt-3.5-turbo" if you don't have GPT-4 access
+      model: "gpt-3.5-turbo",
       messages: [
-        { role: "system", content: "You are a helpful creative writer." },
+        {
+          role: "system",
+          content: "You are a helpful creative podcast script writer.",
+        },
         { role: "user", content: userPrompt },
       ],
       temperature: 0.7,

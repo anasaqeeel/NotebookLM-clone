@@ -10,31 +10,36 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Clean and sanitize the script
-    const cleanedScript = script
-      .replace(/Host A:/gi, "")
-      .replace(/Host B:/gi, "")
-      .replace(/intro music fades/gi, "") // Remove this line
-      .trim();
-
-    const lines: string[] = cleanedScript
+    const rawLines: string[] = script
       .split("\n")
       .map((line: string) => line.trim())
       .filter((line: string) => line.length > 0);
 
-    // 🪵 Log cleaned lines to terminal for debug
-    console.log("🎧 Final script being sent to ElevenLabs:");
-    lines.forEach((line, idx) => {
-      console.log(`${idx + 1}. ${line}`);
-    });
-
     const audioBuffers: Buffer[] = [];
-    let useBrent = true;
 
-    for (const line of lines) {
-      const voiceId = useBrent
-        ? "esy0r39YPLQjOczyOib8" // ✅ Brent
-        : "ntZTccPdJ1RjBKzcima9"; // ✅ Erwen
+    console.log("🎧 Final script being sent to ElevenLabs:");
+
+    for (let idx = 0; idx < rawLines.length; idx++) {
+      const rawLine = rawLines[idx];
+
+      // Detect speaker
+      const speakerMatch = rawLine.match(/^(Chris|Jenna):/i);
+      const speaker = speakerMatch ? speakerMatch[1].toLowerCase() : "chris";
+
+      // ✅ Assign correct voice (voice IDs swapped here!)
+      const voiceId =
+        speaker === "jenna"
+          ? "esy0r39YPLQjOczyOib8" // ✅ Female voice
+          : "ntZTccPdJ1RjBKzcima9"; // ✅ Male voice
+
+      // Clean up line
+      const cleanedLine = rawLine
+        .replace(/^(Chris|Jenna):/i, "")
+        .replace(/\[.*?\]/g, "")
+        .trim();
+
+      console.log(`${idx + 1}. ${speaker.toUpperCase()}: ${cleanedLine}`);
+      console.log(`🎤 Voice ID used: ${voiceId}`);
 
       const response = await fetch(
         `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`,
@@ -45,7 +50,7 @@ export async function POST(request: NextRequest) {
             "xi-api-key": process.env.ELEVENLABS_API_KEY || "",
           },
           body: JSON.stringify({
-            text: line,
+            text: cleanedLine,
             model_id: "eleven_monolingual_v1",
             voice_settings: {
               stability: 0.5,
@@ -61,7 +66,6 @@ export async function POST(request: NextRequest) {
 
       const audioBuffer = Buffer.from(await response.arrayBuffer());
       audioBuffers.push(audioBuffer);
-      useBrent = !useBrent;
     }
 
     const mergedAudio = Buffer.concat(audioBuffers);
