@@ -72,7 +72,8 @@ export async function POST(request: NextRequest) {
     }
 
     const speechAudio = Buffer.concat(audioBuffers);
-    const tempDir = path.join(process.cwd(), "tmp");
+    const tempDir = "/tmp";
+
     await fs.mkdir(tempDir, { recursive: true });
 
     const speechFile = path.join(tempDir, `speech_${uuidv4()}.mp3`);
