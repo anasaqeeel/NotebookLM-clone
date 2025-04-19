@@ -11,7 +11,7 @@ export async function POST(request: NextRequest) {
     const { industry, prospectName, question } = await request.json();
     if (!industry || !prospectName || !question) {
       return NextResponse.json(
-        { error: "Industry, prospect name, and question are required" },
+        { error: "Industry, prospect name, and discussion topic are required" },
         { status: 400 }
       );
     }
@@ -27,14 +27,14 @@ export async function POST(request: NextRequest) {
       
       Start the podcast with an enthusiastic introduction that:
       - Highlights the prospect (${prospectName}) and their impact in the ${industry} industry.
-      - Sets up the topic related to the user's question without directly quoting it initially.
+      - Introduces the discussion topic "${question}" as the central theme without framing it as a question.
       - Creates excitement about the discussion to come.
       
-      Then, transition into a natural, energetic, and engaging conversation between Chris and Jenna that revolves around **a user question** about the business in the ${industry} field: "${question}".
+      Then, transition into a natural, energetic, and engaging conversation between Chris and Jenna that revolves around the discussion topic in the context of the ${industry} field.
       
       The hosts should:
       - Discuss ${prospectName}'s business and their innovations or contributions in the ${industry} field.
-      - Address the user's question directly, weaving it into the conversation naturally.
+      - Explore the discussion topic "${question}" thoroughly, weaving it into the conversation naturally.
       - Share insights, examples, or anecdotes to make the discussion relatable and compelling.
       - Keep the tone professional yet conversational, like a top-tier podcast.
 
@@ -51,17 +51,16 @@ export async function POST(request: NextRequest) {
 
     // Request OpenAI to generate the script
     const completion = await openai.chat.completions.create({
-      model: "gpt-4", // Upgraded to gpt-4 for better quality and coherence
+      model: "gpt-4",
       messages: [
         {
           role: "system",
-          content:
-            "You are a creative podcast script writer specializing in engaging, professional, and natural dialogue.",
+          content: "You are a creative podcast script writer specializing in engaging, professional, and natural dialogue.",
         },
         { role: "user", content: userPrompt },
       ],
-      temperature: 0.8, // Slightly higher for more creative and lively dialogue
-      max_tokens: 800, // Increased for a more detailed and engaging script
+      temperature: 0.8,
+      max_tokens: 800,
     });
 
     const script = completion.choices?.[0]?.message?.content;
