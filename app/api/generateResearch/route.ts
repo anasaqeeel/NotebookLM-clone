@@ -5,6 +5,8 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY || "",
 });
 
+let conversationHistory: { role: string; content: string }[] = []; // Store the conversation history
+
 export async function POST(request: NextRequest) {
   try {
     const { topic } = await request.json();
@@ -15,21 +17,19 @@ export async function POST(request: NextRequest) {
 
     const cleanedTopic = topic.trim();
 
-    const completion = await openai.chat.completions.create({
-      // model: "gpt-4", // Or use "gpt-3.5-turbo"
-      model: "gpt-3.5-turbo",
+    // Update the conversation history with the user message
+    conversationHistory.push({ role: "user", content: cleanedTopic });
 
+    const completion = await openai.chat.completions.create({
+      model: "gpt-3.5-turbo", // Or use "gpt-4" based on your need
       messages: [
         {
           role: "system",
           content:
             "You are a helpful assistant. Provide a concise, relevant answer.",
         },
-        {
-          role: "user",
-          content: `User wants info on: ${cleanedTopic}`,
-        },
-      ],
+        ...conversationHistory, // Proper format for user and assistant roles
+      ] as OpenAI.CreateChatCompletionRequestMessage[], // Use the correct type here
       temperature: 0.7,
       max_tokens: 500,
     });
@@ -43,6 +43,9 @@ export async function POST(request: NextRequest) {
         { status: 500 }
       );
     }
+
+    // Append the assistant's response to the conversation history
+    conversationHistory.push({ role: "assistant", content });
 
     return NextResponse.json({ content });
   } catch (error: any) {

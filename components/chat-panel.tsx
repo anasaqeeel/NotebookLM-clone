@@ -1,12 +1,12 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { Send } from "lucide-react"
-import { useResearchContext } from "@/contexts/research-context"
+import { useState } from "react";
+import { Send } from "lucide-react";
+import { useResearchContext } from "@/contexts/research-context";
 
 interface Message {
-  role: "user" | "assistant"
-  text: string
+  role: "user" | "assistant";
+  text: string;
 }
 
 export default function ChatPanel() {
@@ -15,37 +15,37 @@ export default function ChatPanel() {
       role: "assistant",
       text: "Hello! Enter your research question below and I'll respond!",
     },
-  ])
-  const [inputValue, setInputValue] = useState("")
-  const [isLoading, setIsLoading] = useState(false)
-  const { generateResearch } = useResearchContext()
+  ]);
+  const [inputValue, setInputValue] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const { generateResearch } = useResearchContext();
 
   const handleSend = async () => {
-    const trimmedInput = inputValue.trim()
-    if (!trimmedInput) return
+    const trimmedInput = inputValue.trim();
+    if (!trimmedInput) return;
 
-    const userMessage: Message = { role: "user", text: trimmedInput }
-    setMessages((prev) => [...prev, userMessage])
-    setInputValue("")
-    setIsLoading(true)
+    const userMessage: Message = { role: "user", text: trimmedInput };
+    setMessages((prev) => [...prev, userMessage]);
+    setInputValue("");
+    setIsLoading(true);
 
     try {
-      const generatedContent = await generateResearch(trimmedInput)
+      const generatedContent = await generateResearch(trimmedInput);
       const assistantMessage: Message = {
         role: "assistant",
         text: generatedContent,
-      }
-      setMessages((prev) => [...prev, assistantMessage])
+      };
+      setMessages((prev) => [...prev, assistantMessage]);
     } catch (error: any) {
       const assistantMessage: Message = {
         role: "assistant",
         text: "Error calling GPT: " + error.message,
-      }
-      setMessages((prev) => [...prev, assistantMessage])
+      };
+      setMessages((prev) => [...prev, assistantMessage]);
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
 
   return (
     <div className="h-full flex flex-col">
@@ -96,5 +96,5 @@ export default function ChatPanel() {
         Powered by Lav1
       </div>
     </div>
-  )
+  );
 }
