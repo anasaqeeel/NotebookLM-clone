@@ -16,51 +16,44 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Build the user prompt to generate an engaging podcast script
+    // Build the user prompt to generate a short podcast script
     const userPrompt = `
-      Write a podcast script with **exactly** two hosts:
+      Write a short podcast script with exactly two hosts:
       - Male host: Chris
       - Female host: Jenna
 
-      Do **not** mention any other names like Alex, Sarah, or any narrator.
-      Do **not** include sound directions like "[music fades in]" or "[theme fades]".
-      
-      Start the podcast with an enthusiastic introduction that:
-      - Highlights the prospect (${prospectName}) and their impact in the ${industry} industry.
-      - Introduces the discussion topic "${question}" as the central theme without framing it as a question.
-      - Creates excitement about the discussion to come.
-      
-      Then, transition into a natural, energetic, and engaging conversation between Chris and Jenna that revolves around the discussion topic in the context of the ${industry} field.
-      
-      The hosts should:
-      - Discuss ${prospectName}'s business and their innovations or contributions in the ${industry} field.
-      - Explore the discussion topic "${question}" thoroughly, weaving it into the conversation naturally.
-      - Share insights, examples, or anecdotes to make the discussion relatable and compelling.
-      - Keep the tone professional yet conversational, like a top-tier podcast.
+      Do not mention any other names like Alex, Sarah, or any narrator.
+      Do not include sound directions like "[music fades in]" or "[theme fades]".
 
-      **The format must be:**
-      Chris: ...
-      Jenna: ...
-      Chris: ...
-      Jenna: ...
-      Chris: ...
+      The podcast should:
+      - Introduce ${prospectName} and their role in the ${industry} industry.
+      - Briefly explore the topic "${question}" in a natural, conversational tone.
+      - Keep the dialogue energetic, engaging, and professional.
 
-      Ensure the script is at least 5 exchanges long, with each host contributing meaningfully. 
-      DO NOT ADD ANYTHING OUTSIDE THE DIALOGUE.
+      IMPORTANT:
+      - The script must be no more than 700 characters.
+      - Limit the dialogue to around 3–4 short exchanges total.
+      - The format must be:
+        Chris: ...
+        Jenna: ...
+        Chris: ...
+        Jenna: ...
+
+      DO NOT add anything outside the dialogue. Keep it concise and within the character limit.
     `;
 
-    // Request OpenAI to generate the script
     const completion = await openai.chat.completions.create({
       model: "gpt-4",
       messages: [
         {
           role: "system",
-          content: "You are a creative podcast script writer specializing in engaging, professional, and natural dialogue.",
+          content:
+            "You are a creative podcast script writer specializing in short, professional, and engaging dialogue.",
         },
         { role: "user", content: userPrompt },
       ],
       temperature: 0.8,
-      max_tokens: 800,
+      max_tokens: 400, // Lowered to reflect short script
     });
 
     const script = completion.choices?.[0]?.message?.content;

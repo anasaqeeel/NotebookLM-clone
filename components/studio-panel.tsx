@@ -208,24 +208,30 @@ export default function StudioPanel() {
           {errorMsg && <p className="text-red-500 mt-2">{errorMsg}</p>}
 
           {showPlayer && (
-            <>
-              <AudioPlayer ref={audioRef} audioUrl={audioUrl} />
-              <button
-                onClick={() => {
-                  const a = audioRef.current;
-                  if (a) {
-                    const link = document.createElement("a");
-                    link.href = a.src;
-                    link.download = "podcast.mp3";
-                    link.click();
-                  }
-                }}
-                className="w-full mt-2 py-2 bg-green-600 text-white rounded hover:bg-green-700"
-              >
-                Download Podcast
-              </button>
-            </>
-          )}
+  <>
+    <AudioPlayer ref={audioRef} audioUrl={audioUrl} />
+    <button
+      onClick={() => {
+        const a = audioRef.current;
+        if (a) {
+          const link = document.createElement("a");
+          link.href = a.src;
+          link.download = "podcast.mp3";
+          link.click();
+        }
+      }}
+      className="w-full mt-2 py-2 bg-green-600 text-white rounded hover:bg-green-700"
+    >
+      Download Podcast
+    </button>
+
+    {/* Test note message */}
+    <p className="text-xs text-gray-500 mt-1 text-center">
+      This is for <span className="italic">testing purposes</span> only and is limited to <strong>under 1 minute</strong>. Longer podcasts can be created for actual clients.
+    </p>
+  </>
+)}
+
         </div>
 
         {/* Follow‑up Q&A */}
