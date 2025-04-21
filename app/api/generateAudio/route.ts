@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
 
     const lines = script
       .split("\n")
-      .map((l) => l.trim())
+      .map((l: any) => l.trim())
       .filter(Boolean);
     const ttsBuffers: Buffer[] = [];
 
