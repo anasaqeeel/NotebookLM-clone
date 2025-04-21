@@ -69,7 +69,7 @@ export async function POST(request: NextRequest) {
     );
 
     const filter = [
-      `[1]volume=0.2,afade=t=in:ss=0:d=5,afade=t=out:st=${fadeOutStart}:d=5[bg]`,
+      `[1]volume=0.1,afade=t=in:ss=0:d=5,afade=t=out:st=${fadeOutStart}:d=5[bg]`, // lowered music to ~10%
       `[0][bg]amix=inputs=2:duration=first:dropout_transition=2[out]`,
     ].join(";");
 
