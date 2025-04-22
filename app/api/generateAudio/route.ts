@@ -1,4 +1,3 @@
-// app/api/generateAudio/route.ts
 export const runtime = "nodejs";
 
 import { NextRequest, NextResponse } from "next/server";
@@ -29,7 +28,7 @@ export async function POST(request: NextRequest) {
       const m = line.match(/^(Chris|Jenna):/i);
       const speaker = m ? m[1].toLowerCase() : "chris";
       const voiceId =
-        speaker === "jenna" ? "esy0r39YPLQjOczyOib8" : "ntZTccPdJ1RjBKzcima9";
+        speaker === "jenna" ? "4J6vnGRtSwQwvsNMctFD" : "J2ZyEiucCjyqhQvUa1Zg";
       const text = line.replace(/^(Chris|Jenna):/i, "").trim();
 
       const res = await fetch(
@@ -57,9 +56,8 @@ export async function POST(request: NextRequest) {
     const ttsBuffer = Buffer.concat(ttsBuffers);
     console.log("✔️ TTS buffer length:", ttsBuffer.length);
 
-    // 🧠 Estimate duration of the TTS buffer in seconds (based on 128 kbps MP3)
     const estimatedSeconds = Math.ceil((ttsBuffer.length * 8) / 128000);
-    const fadeOutStart = Math.max(estimatedSeconds - 5, 0); // no negatives
+    const fadeOutStart = Math.max(estimatedSeconds - 5, 0);
 
     const backgroundPath = path.join(
       process.cwd(),
@@ -69,7 +67,7 @@ export async function POST(request: NextRequest) {
     );
 
     const filter = [
-      `[1]volume=0.1,afade=t=in:ss=0:d=5,afade=t=out:st=${fadeOutStart}:d=5[bg]`, // lowered music to ~10%
+      `[1]volume=0.1,afade=t=in:ss=0:d=5,afade=t=out:st=${fadeOutStart}:d=5[bg]`,
       `[0][bg]amix=inputs=2:duration=first:dropout_transition=2[out]`,
     ].join(";");
 

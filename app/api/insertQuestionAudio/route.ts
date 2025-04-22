@@ -1,11 +1,9 @@
-// app/api/insertQuestionAudio/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import axios from "axios";
 
-// Replace with your real ElevenLabs keys and voice IDs via env
 const ELEVEN_API_KEY = process.env.ELEVEN_API_KEY!;
-const VOICE_MALE = "esy0r39YPLQjOczyOib8"; // male ID
-const VOICE_FEMALE = "ntZTccPdJ1RjBKzcima9"; // female ID
+const VOICE_MALE = "J2ZyEiucCjyqhQvUa1Zg";
+const VOICE_FEMALE = "4J6vnGRtSwQwvsNMctFD";
 
 export async function POST(request: NextRequest) {
   try {
@@ -17,7 +15,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Split into lines of non‑empty strings
     const lines: string[] = hostAnswer
       .split("\n")
       .map((l: string) => l.trim())
@@ -26,12 +23,11 @@ export async function POST(request: NextRequest) {
     const chunks: Buffer[] = [];
 
     for (const line of lines) {
-      // Expect "Host A: ..." or "Host B: ..."
       const [speakerLabel, ...rest] = line.split(":");
       const text = rest.join(":").trim();
       if (!text) continue;
 
-      const voiceId = /A$/i.test(speakerLabel) ? VOICE_MALE : VOICE_FEMALE;
+      const voiceId = /Chris/i.test(speakerLabel) ? VOICE_MALE : VOICE_FEMALE;
 
       const resp = await axios.post<ArrayBuffer>(
         `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`,

@@ -1,4 +1,3 @@
-// components/StudioPanel.tsx
 "use client";
 
 import { useState, useRef } from "react";
@@ -13,18 +12,14 @@ declare global {
   }
 }
 
-
-// Fix TS missing types
 type SpeechRecognitionEvent = Event & {
   readonly results: SpeechRecognitionResultList;
 };
-
 
 export default function StudioPanel() {
   const { researchContent } = useResearchContext();
   const finalScript = researchContent.trim();
 
-  // Main podcast
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [audioUrl, setAudioUrl] = useState("");
   const [showPlayer, setShowPlayer] = useState(false);
@@ -32,17 +27,15 @@ export default function StudioPanel() {
   const [errorMsg, setErrorMsg] = useState("");
   const [pauseTime, setPauseTime] = useState(0);
 
-  // Follow‑up Q&A
   const [question, setQuestion] = useState("");
   const [isAsking, setIsAsking] = useState(false);
   const [questionError, setQuestionError] = useState("");
 
-  // snippet audio
+  const [recording, setRecording] = useState(false); // Added missing state
+
   const snippetRef = useRef<HTMLAudioElement | null>(null);
   const [snippetPlaying, setSnippetPlaying] = useState(false);
 
-  // Speech recognition
-  const [recording, setRecording] = useState(false);
   const recognition =
     typeof window !== "undefined" &&
     (window.SpeechRecognition || window.webkitSpeechRecognition)
@@ -63,7 +56,6 @@ export default function StudioPanel() {
     }
   };
 
-  // Generate & play main podcast
   const handleGenerate = async () => {
     if (!finalScript) return setErrorMsg("Generate a script first.");
     setIsGenerating(true);
@@ -87,7 +79,6 @@ export default function StudioPanel() {
     }
   };
 
-  // Record by mic
   const startRec = () => {
     if (!recognition) return;
     pauseMain();
@@ -100,8 +91,7 @@ export default function StudioPanel() {
       setQuestion(txt);
     };
     
-    
-    recognition.onerror = (ev:any) => {
+    recognition.onerror = (ev: any) => {
       setRecording(false);
       setQuestionError("Recognition error: " + ev.error);
     };
@@ -113,7 +103,6 @@ export default function StudioPanel() {
     setRecording(false);
   };
 
-  // Ask question
   const handleAsk = async () => {
     if (!question.trim()) return setQuestionError("Type or record a question.");
     setQuestionError("");
@@ -121,16 +110,14 @@ export default function StudioPanel() {
     pauseMain();
 
     try {
-      // 1) GPT answer
       const ansRes = await fetch("/api/answerQuestion", {
         method: "POST",
-        body: JSON.stringify({ question, context: finalScript }),
+        body: JSON.stringify({ question, context: finalScript, prospectName: "Prospect" }),
         headers: { "Content-Type": "application/json" },
       });
       const { response: hostAnswer } = await ansRes.json();
       if (!hostAnswer) throw new Error("No answer");
 
-      // 2) get merged snippet
       const ttsRes = await fetch("/api/insertQuestionAudio", {
         method: "POST",
         body: JSON.stringify({ hostAnswer }),
@@ -140,13 +127,11 @@ export default function StudioPanel() {
       const blob = await ttsRes.blob();
       const url = URL.createObjectURL(blob);
 
-      // 3) play snippet
       const sn = new Audio(url);
       snippetRef.current = sn;
       sn.onplay = () => setSnippetPlaying(true);
       sn.onended = () => {
         setSnippetPlaying(false);
-        // resume main
         if (audioRef.current) {
           audioRef.current.currentTime = pauseTime;
           audioRef.current.play().catch(() => {});
@@ -162,11 +147,9 @@ export default function StudioPanel() {
     }
   };
 
-  // Pause snippet & resume main
   const handlePauseSnippet = () => {
     snippetRef.current?.pause();
     setSnippetPlaying(false);
-    // resume main
     if (audioRef.current) {
       audioRef.current.currentTime = pauseTime;
       audioRef.current.play().catch(() => {});
@@ -176,14 +159,12 @@ export default function StudioPanel() {
 
   return (
     <div className="h-full flex flex-col p-4">
-      {/* Header */}
       <div className="border-b pb-4 flex justify-between">
         <h2 className="text-lg font-medium">Audio Studio</h2>
         <Info className="text-gray-600 hover:text-purple-700 cursor-pointer" />
       </div>
 
       <div className="flex-1 overflow-auto space-y-6">
-        {/* Generate / Play */}
         <div>
           <h3 className="font-medium mb-2">Audio Overview</h3>
           <p className="text-sm mb-4">
@@ -208,40 +189,36 @@ export default function StudioPanel() {
           {errorMsg && <p className="text-red-500 mt-2">{errorMsg}</p>}
 
           {showPlayer && (
-  <>
-    <AudioPlayer ref={audioRef} audioUrl={audioUrl} />
-    <button
-      onClick={() => {
-        const a = audioRef.current;
-        if (a) {
-          const link = document.createElement("a");
-          link.href = a.src;
-          link.download = "podcast.mp3";
-          link.click();
-        }
-      }}
-      className="w-full mt-2 py-2 bg-green-600 text-white rounded hover:bg-green-700"
-    >
-      Download Podcast
-    </button>
+            <>
+              <AudioPlayer ref={audioRef} audioUrl={audioUrl} />
+              <button
+                onClick={() => {
+                  const a = audioRef.current;
+                  if (a) {
+                    const link = document.createElement("a");
+                    link.href = a.src;
+                    link.download = "podcast.mp3";
+                    link.click();
+                  }
+                }}
+                className="w-full mt-2 py-2 bg-green-600 text-white rounded hover:bg-green-700"
+              >
+                Download Podcast
+              </button>
 
-    {/* Test note message */}
-    <p className="text-xs text-gray-500 mt-1 text-center">
-      This is for <span className="italic">testing purposes</span> only and is limited to <strong>under 1 minute</strong>. Longer podcasts can be created for actual clients.
-    </p>
-  </>
-)}
-
+              <p className="text-xs text-gray-500 mt-1 text-center">
+                This is for <span className="italic">demo purposes</span> only and is limited to <strong>under 1 minute</strong>. Longer podcasts can be created for actual clients.
+              </p>
+            </>
+          )}
         </div>
 
-        {/* Follow‑up Q&A */}
         <div className="bg-purple-50 p-4 rounded">
-          <h4 className="font-medium mb-2">Ask a Follow‑Up Question</h4>
+          <h4 className="font-medium mb-2">Ask a Follow-Up Question</h4>
           <p className="text-sm mb-3">
             Tap the mic to speak, or type your question, then Send.
           </p>
 
-          {/* Record / Type / Send */}
           <div className="flex items-center space-x-2 mb-3">
             <button
               onClick={recording ? stopRec : startRec}
@@ -272,7 +249,6 @@ export default function StudioPanel() {
           </div>
           {questionError && <p className="text-red-500">{questionError}</p>}
 
-          {/* Pause‑Snippet Button */}
           {snippetPlaying && (
             <button
               onClick={handlePauseSnippet}

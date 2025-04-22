@@ -7,7 +7,7 @@ const openai = new OpenAI({
 
 export async function POST(request: NextRequest) {
   try {
-    const { question, context } = await request.json();
+    const { question, context, prospectName } = await request.json();
 
     if (!question || question.trim() === "") {
       return NextResponse.json(
@@ -18,25 +18,23 @@ export async function POST(request: NextRequest) {
 
     // Create a prompt for the hosts to answer the question
     const prompt = `
-      You are two podcast hosts (Host A and Host B) having a conversation. 
+      You are two podcast hosts, Chris (male) and Jenna (female), having a conversation. 
       You've been discussing the following topic:
       
       ${context}
       
-      Now, a listener has asked the following question:
+      Now, ${prospectName} has asked the following question:
       "${question}"
       
-      Please provide a brief, conversational response as both hosts answering this question.
-      Keep your response under 30 seconds when spoken (about 75 words).
+      Please provide a brief, conversational response with Chris answering this question.
+      Keep your response under 15 seconds when spoken (about 40 words).
       Format your response as:
       
-      Host A: [response]
-      Host B: [response]
+      Chris: [response]
     `;
 
     const completion = await openai.chat.completions.create({
-      // model: "gpt-4",
-      model: "gpt-3.5-turbo",
+      model: "gpt-3.5-turbo-16k", // Optimized for speed
       messages: [
         {
           role: "system",
@@ -45,7 +43,7 @@ export async function POST(request: NextRequest) {
         { role: "user", content: prompt },
       ],
       temperature: 0.7,
-      max_tokens: 250,
+      max_tokens: 100, // Reduced for faster response
     });
 
     const response =
