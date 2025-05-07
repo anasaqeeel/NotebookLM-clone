@@ -1,4 +1,3 @@
-// components/NotebookInterface.tsx
 "use client"
 
 import { useState } from "react"
@@ -8,11 +7,17 @@ import SourcesPanel from "@/components/sources-panel"
 import PodcastGenerator from "@/components/PodcastGenerator"
 
 export default function NotebookInterface() {
-  const [activeTab, setActiveTab] = useState<"research" | "sources" | "podcast">("research")
+  const [activeTab, setActiveTab] = useState<"research" | "sources" | "podcast">("podcast")
 
   return (
     <div className="flex flex-col bg-white rounded-xl shadow-lg overflow-hidden border border-purple-200">
       <div className="flex border-b border-purple-200">
+        <button
+          className={`px-4 py-3 font-medium ${activeTab === "podcast" ? "text-[#6a5acd] border-b-2 border-[#6a5acd]" : "text-gray-600"}`}
+          onClick={() => setActiveTab("podcast")}
+        >
+          Podcast
+        </button>
         <button
           className={`px-4 py-3 font-medium ${activeTab === "research" ? "text-[#6a5acd] border-b-2 border-[#6a5acd]" : "text-gray-600"}`}
           onClick={() => setActiveTab("research")}
@@ -24,12 +29,6 @@ export default function NotebookInterface() {
           onClick={() => setActiveTab("sources")}
         >
           Sources
-        </button>
-        <button
-          className={`px-4 py-3 font-medium ${activeTab === "podcast" ? "text-[#6a5acd] border-b-2 border-[#6a5acd]" : "text-gray-600"}`}
-          onClick={() => setActiveTab("podcast")}
-        >
-          Podcast
         </button>
       </div>
       <div className="flex flex-col md:flex-row">
@@ -45,7 +44,7 @@ export default function NotebookInterface() {
           </div>
         </div>
         <div className="w-full md:w-1/3">
-          <StudioPanel />
+          {activeTab === "podcast" && <StudioPanel />}
         </div>
       </div>
     </div>
